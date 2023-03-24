@@ -1,5 +1,7 @@
 import 'dart:developer';
 import 'dart:math' as m;
+import 'package:chris_dnd_assistant/Models/weapon.dart';
+import 'package:chris_dnd_assistant/Resources/colours.dart';
 import 'package:chris_dnd_assistant/Resources/text_styles.dart';
 import 'package:chris_dnd_assistant/Resources/widgets.dart';
 import 'package:flutter/cupertino.dart';
@@ -7,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:page_transition/page_transition.dart';
+
+import '../Models/dice.dart';
 
 class ChooseAttack extends StatefulWidget {
   const ChooseAttack({super.key,});
@@ -54,33 +58,101 @@ class ChooseAttack extends StatefulWidget {
 ///     Potentially make a small skills/ saving throws roller for him too
 
 class _ChooseAttackState extends State<ChooseAttack> with SingleTickerProviderStateMixin {
+  //This set of variables could be moved into their own dart file eventually
+  //List to hold the dice that should be rolled
+  List<Widget> diceList = [];
+  //List of weapons his character has
+  List<Weapon> weaponList = [
+    Weapon(weaponName: 'Battle Tax', damageDice: [8, 8], damageTypes: ['Slashing', 'Slashing']),
+    Weapon(weaponName: 'Greataxe', damageDice: [8, 8], damageTypes: ['Slashing', 'Slashing']),
+  ];
+  //The list for the drop down weapon selector, list is populated at runtime
+  List<DropdownMenuItem<Weapon>> weaponDropdownList = [];
+  //Default selected weapon is first weapon in the dropdownmenuitem list
+  late Weapon selectedWeapon;
 
   @override
   void initState() {
+    weaponDropdownList = populateWeaponDropdown(weaponList);
+    selectedWeapon = weaponList[0];
     super.initState();
   }
 
-  @override
-  Widget build(BuildContext context) {
-
-    //We reset the timeDilation back to default
-    timeDilation = 1;
-
-    Widget recentRollWindow() {
-      return Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Container(
-          width: double.infinity, height: MediaQuery.of(context).size.height * 0.3,
+  Widget recentRollWindow() {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Container(
+          width: double.infinity, height: MediaQuery.of(context).size.height * 0.25,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             color: Colors.white,
           ),
-          child: Center(
-            child: Text('Box'),
+          child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: diceList
+          )
+      ),
+    );
+  }
+
+  Widget testDiceRoll() {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          Dice dice = Dice(sides: 20);
+          diceList.add(dice.showDice());
+        });
+      },
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Text('Press Me', style: contentText),
+        ),
+      ),
+    );
+  }
+
+  Widget makeWeaponAttack() {
+    return InkWell(
+      onTap: () {
+        //Call attack method on weapon
+        setState(() {
+          diceList = selectedWeapon.attack(false, false, 0);
+        });
+      },
+      child: buttonTemplate(
+        const Center(
+          child: Text(
+            'Make Weapon Attack',
           ),
         ),
-      );
-    }
+      ),
+    );
+  }
+
+  Widget weaponSelectDropDown() {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: DropdownButtonFormField<Weapon>(
+        items: weaponDropdownList,
+        value: selectedWeapon,
+        onChanged: (value) {
+          setState(() {
+            selectedWeapon = value!;
+          });
+        },
+        style: contentText,
+        dropdownColor: bgColour,
+      )
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    //We reset the timeDilation back to default
+    timeDilation = 1;
+
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -91,9 +163,21 @@ class _ChooseAttackState extends State<ChooseAttack> with SingleTickerProviderSt
           children: [
             heroWidget(),
             recentRollWindow(),
+            makeWeaponAttack(),
+            weaponSelectDropDown()
           ],
         ),
       ),
     );
   }
+}
+
+List<DropdownMenuItem<Weapon>> populateWeaponDropdown(List<Weapon> list) {
+  List<DropdownMenuItem<Weapon>> result = [];
+
+  for (Weapon i in list) {
+    result.add(DropdownMenuItem(value: i, child: Text(i.weaponName)));
+  }
+
+  return result;
 }
